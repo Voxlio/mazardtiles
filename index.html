@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Word Tiles</title>
+<title>Mazard Tiles</title>
+<meta name="description" content="Mazard Tiles — a word tile game you can play pass-and-play on one phone, or online with a friend using a room code.">
+<meta name="theme-color" content="#241a12">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%236b4527'/%3E%3Crect x='5' y='5' width='54' height='54' rx='9' fill='%23f0e2c0'/%3E%3Ctext x='29' y='47' font-family='Georgia,Times,serif' font-size='42' font-weight='700' text-anchor='middle' fill='%233b2a1a'%3EM%3C/text%3E%3Ctext x='51' y='54' font-family='Georgia,Times,serif' font-size='16' font-weight='700' text-anchor='middle' fill='%233b2a1a'%3E3%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Baloo+2:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -68,7 +71,9 @@
     margin: 0 0 4px;
     color: var(--accent);
     text-align: center;
+    transition: font-size 0.2s ease;
   }
+  body.playing h1.title { font-size: 19px; margin-bottom: 10px; }
   .subtitle {
     color: var(--text-dim);
     font-size: 13.5px;
@@ -78,8 +83,7 @@
     line-height: 1.5;
   }
 
-  /* ---------- Setup screen ---------- */
-  #setupScreen { width: min(420px, 94vw); }
+  #setupScreen, #welcomeScreen, #onlineSetupScreen, #onlineWaitingScreen { width: min(420px, 94vw); }
   .setup-card {
     background: var(--panel);
     border-radius: 20px;
@@ -120,7 +124,7 @@
     border: none;
     background: var(--bg-2);
     color: var(--text);
-    font-size: 15px;
+    font-size: 16px;
     margin-bottom: 8px;
     font-family: 'Inter', sans-serif;
   }
@@ -145,7 +149,6 @@
     line-height: 1.5;
   }
 
-  /* ---------- Game screen ---------- */
   #gameScreen { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; }
 
   .score-strip {
@@ -167,6 +170,7 @@
     opacity: 0.6;
   }
   .score-chip.current { opacity: 1; box-shadow: 0 0 0 2px var(--accent) inset; }
+  .score-chip.gone { opacity: 0.32; }
   .score-chip .pname { font-size: 11px; color: var(--text-dim); }
   .score-chip .pscore { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 18px; }
 
@@ -174,6 +178,56 @@
     font-size: 12.5px;
     color: var(--text-dim);
     margin-bottom: 10px;
+  }
+
+  .turn-timer {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    text-align: center;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    min-height: 18px;
+  }
+  .turn-timer.low { color: var(--danger); }
+
+  .reaction-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 2px 0 10px;
+  }
+  .reaction-btn {
+    border: none;
+    background: var(--panel);
+    border-radius: 999px;
+    width: 38px;
+    height: 38px;
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.1s ease;
+  }
+  .reaction-btn:active { transform: scale(0.85); }
+
+  .reaction-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 110px;
+    transform: translateX(-50%);
+    font-size: 42px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 50;
+  }
+  .reaction-toast.show { animation: reactionPop 1.6s ease forwards; }
+  @keyframes reactionPop {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.5); }
+    15%  { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1.15); }
+    30%  { transform: translateX(-50%) translateY(-14px) scale(1); }
+    80%  { opacity: 1; transform: translateX(-50%) translateY(-40px) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.9); }
   }
 
   .board-wrap {
@@ -187,10 +241,10 @@
   }
   #board {
     display: grid;
-    grid-template-columns: repeat(15, minmax(27px, 1fr));
-    grid-template-rows: repeat(15, minmax(27px, 1fr));
+    grid-template-columns: repeat(15, minmax(24px, 1fr));
+    grid-template-rows: repeat(15, minmax(24px, 1fr));
     gap: 1.5px;
-    min-width: 405px;
+    min-width: 360px;
     aspect-ratio: 1;
   }
   .cell {
@@ -204,13 +258,13 @@
     color: rgba(59,42,26,0.55);
     font-weight: 700;
     cursor: pointer;
+    user-select: none;
   }
   .cell.TW { background: var(--tw); color: rgba(255,255,255,0.85); }
   .cell.DW { background: var(--dw); color: rgba(59,42,26,0.6); }
   .cell.STAR { background: var(--dw); color: rgba(59,42,26,0.7); font-size: 14px; }
   .cell.TL { background: var(--tl); color: rgba(255,255,255,0.8); }
   .cell.DL { background: var(--dl); color: rgba(59,42,26,0.55); }
-  .cell.center-anchor { outline: 2px solid rgba(255,255,255,0.5); outline-offset: -2px; }
 
   .cell .tile {
     position: absolute;
@@ -234,7 +288,9 @@
     font-weight: 600;
   }
   .cell .tile.pending { background: #fff6de; box-shadow: 0 0 0 2px var(--accent); }
-  .cell .tile.blank-tile { color: #7a5a2a; }
+  .cell .tile.just-played { animation: pop 0.35s ease; }
+  .cell .tile.blank-tile { color: #9a7b4a; }
+  @keyframes pop { 0% { transform: scale(0.6); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
 
   .rack-wrap {
     width: 100%;
@@ -263,6 +319,7 @@
     font-size: 19px;
     position: relative;
     cursor: pointer;
+    user-select: none;
     box-shadow: 0 2px 3px rgba(0,0,0,0.3);
     transition: transform 0.1s ease;
   }
@@ -275,7 +332,12 @@
   }
   .rack-tile.selected { transform: translateY(-8px); box-shadow: 0 0 0 3px var(--accent); }
   .rack-tile.exchange-marked { box-shadow: 0 0 0 3px var(--danger); }
-  .rack-tile.blank-tile { color: #7a5a2a; }
+  .rack-tile.blank-tile::after {
+    content: '';
+    width: 9px; height: 9px;
+    border: 1.5px dashed rgba(59,42,26,0.4);
+    border-radius: 2px;
+  }
 
   .status-line {
     min-height: 20px;
@@ -284,6 +346,7 @@
     text-align: center;
     color: var(--text-dim);
     max-width: 380px;
+    line-height: 1.45;
   }
   .status-line.error { color: var(--danger); }
   .status-line.success { color: var(--good); }
@@ -311,8 +374,8 @@
   .btn-secondary { background: var(--panel); color: var(--text); }
   .btn-primary { background: var(--accent); color: #241a12; flex-grow: 1.4; }
   .btn-danger { background: transparent; color: var(--danger); border: 1.5px solid var(--danger) !important; }
+  .actions-row button:disabled { opacity: 0.35; cursor: default; }
 
-  /* ---------- Transition overlay ---------- */
   #transitionScreen {
     position: fixed; inset: 0;
     background: var(--bg);
@@ -342,7 +405,6 @@
     cursor: pointer;
   }
 
-  /* ---------- Blank modal ---------- */
   #blankModal {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.6);
@@ -379,7 +441,6 @@
     font-size: 13px; text-decoration: underline; cursor: pointer;
   }
 
-  /* ---------- End screen ---------- */
   #endScreen { width: min(420px, 94vw); text-align: center; }
   #endScreen .winner {
     font-family: 'Fraunces', serif;
@@ -402,8 +463,6 @@
     cursor: pointer;
   }
 
-  /* ---------- Mode / online screens ---------- */
-  #welcomeScreen, #onlineSetupScreen, #onlineWaitingScreen { width: min(420px, 94vw); }
   .mode-btn {
     width: 100%;
     padding: 14px 0;
@@ -417,6 +476,7 @@
     cursor: pointer;
     margin-bottom: 12px;
   }
+  .mode-btn:disabled { opacity: 0.5; cursor: default; }
   .mode-btn.secondary { background: transparent; border: 2px solid var(--wood-light); color: var(--text); }
   .or-divider { text-align: center; color: var(--text-dim); font-size: 12.5px; margin: 4px 0 12px; }
   .room-code-display {
@@ -425,10 +485,18 @@
     font-size: 42px;
     letter-spacing: 6px;
     color: var(--accent);
-    margin: 10px 0 14px;
+    margin: 10px 0 6px;
+  }
+  .copy-code {
+    background: none; border: 1.5px solid var(--wood-light); color: var(--text-dim);
+    border-radius: 999px; padding: 6px 16px; font-size: 12.5px; cursor: pointer;
+    font-family: 'Inter', sans-serif; margin-bottom: 10px;
   }
   .waiting-players { background: var(--bg-2); border-radius: 12px; padding: 6px 14px; margin: 14px 0; text-align: left; }
-  .waiting-players .row { padding: 8px 2px; font-size: 15px; }
+  .waiting-players .row { padding: 8px 2px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .waiting-players .tag { font-size: 11px; color: var(--text-dim); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 7px; }
+  .dot.off { background: var(--text-dim); opacity: 0.5; }
   #startOnlineGameBtn {
     width: 100%; margin-top: 6px; padding: 14px 0; border-radius: 999px; border: none;
     background: var(--accent); color: #241a12; font-family: 'Baloo 2', sans-serif;
@@ -436,34 +504,43 @@
   }
   .online-bar {
     width: 100%; max-width: 460px; display: flex; justify-content: space-between;
-    align-items: center; margin-bottom: 8px; font-size: 12.5px; color: var(--text-dim);
+    align-items: center; margin-bottom: 8px; font-size: 12.5px; color: var(--text-dim); gap: 10px;
   }
-  .turn-banner { font-weight: 600; }
+  .turn-banner { font-weight: 600; text-align: right; }
   .turn-banner.your-turn { color: var(--good); }
   .prack { font-size: 9.5px; color: var(--text-dim); }
   .back-link {
     background: none; border: none; color: var(--text-dim); font-size: 13px;
     text-decoration: underline; cursor: pointer; margin-top: 10px; display: block; width: 100%; text-align: center;
   }
-  .actions-row button:disabled { opacity: 0.4; cursor: default; }
+  .setup-help {
+    background: var(--bg-2); border-radius: 12px; padding: 14px 16px;
+    font-size: 13px; line-height: 1.6; color: var(--text-dim); text-align: left;
+  }
+  .setup-help ol { margin: 8px 0 0; padding-left: 18px; }
+  .setup-help li { margin-bottom: 6px; }
+  .setup-help code {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    background: rgba(128,128,128,0.18); padding: 1px 5px; border-radius: 4px;
+  }
+  .setup-help a { color: var(--accent); }
 </style>
 </head>
 <body>
 
-<h1 class="title">Word Tiles</h1>
-<p class="subtitle">Pass-and-play word tile game for one phone. No built-in dictionary — call out challenges the old-fashioned way.</p>
+<h1 class="title">Mazard Tiles</h1>
+<p class="subtitle" id="subtitle">A word tile game for one phone passed around, or two phones across the internet. Words are checked against a built-in dictionary.</p>
 
-<!-- WELCOME / MODE PICK -->
 <div id="welcomeScreen">
   <div class="setup-card">
     <h2>How do you want to play?</h2>
-    <button id="chooseLocalBtn" class="mode-btn">📱 Play here (pass &amp; play)</button>
-    <button id="chooseOnlineBtn" class="mode-btn secondary">🌐 Play online with a friend</button>
-    <div class="no-dict-note">Online play connects your two browsers directly over the internet — no account needed, but both of you need to keep the page open.</div>
+    <button id="chooseLocalBtn" class="mode-btn">Play here (pass &amp; play)</button>
+    <button id="chooseOnlineBtn" class="mode-btn secondary">Play online with a friend</button>
+    <button id="rejoinBtn" class="mode-btn secondary hidden"></button>
+    <div class="no-dict-note">Online play needs everyone to have the same room code. You can close and reopen the page mid-game without losing your place.</div>
   </div>
 </div>
 
-<!-- SETUP (local pass & play) -->
 <div id="setupScreen" class="hidden">
   <div class="setup-card">
     <h2>How many players?</h2>
@@ -475,43 +552,44 @@
     <h2>Names</h2>
     <div id="nameInputs"></div>
     <button id="startBtn">Start Game</button>
-    <div class="no-dict-note">Standard 15×15 board, bonus squares, and 100-tile bag. Blanks let you choose any letter for zero points.</div>
-    <button class="back-link" id="backFromSetup">← Back</button>
+    <div class="no-dict-note">Standard 15&times;15 board, bonus squares, and a 100-tile bag. Blanks can stand in for any letter, and score zero.</div>
+    <button class="back-link" id="backFromSetup">&larr; Back</button>
   </div>
 </div>
 
-<!-- ONLINE SETUP -->
 <div id="onlineSetupScreen" class="hidden">
   <div class="setup-card">
-    <h2>Your name</h2>
-    <input class="name-input" id="onlineNameInput" placeholder="Your name" maxlength="16">
-    <button id="createRoomBtn" class="mode-btn">Create a Room</button>
-    <div class="or-divider">— or join a friend's room —</div>
-    <input class="name-input" id="joinCodeInput" placeholder="Room code" maxlength="8" style="text-transform:uppercase">
-    <button id="joinRoomBtn" class="mode-btn secondary">Join Room</button>
-    <div class="status-line" id="onlineSetupStatus"></div>
-    <button class="back-link" id="backFromOnlineSetup">← Back</button>
+    <div id="onlineForm">
+      <h2>Your name</h2>
+      <input class="name-input" id="onlineNameInput" placeholder="Your name" maxlength="16" autocomplete="nickname">
+      <button id="createRoomBtn" class="mode-btn">Create a Room</button>
+      <div class="or-divider">&mdash; or join a friend's room &mdash;</div>
+      <input class="name-input" id="joinCodeInput" placeholder="Room code" maxlength="4" style="text-transform:uppercase" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <button id="joinRoomBtn" class="mode-btn secondary">Join Room</button>
+    </div>
+    <div id="onlineUnavailable" class="setup-help hidden"></div>
+    <div class="status-line" id="onlineSetupStatus" style="margin:10px auto 0;"></div>
+    <button class="back-link" id="backFromOnlineSetup">&larr; Back</button>
   </div>
 </div>
 
-<!-- ONLINE WAITING ROOM -->
 <div id="onlineWaitingScreen" class="hidden">
   <div class="setup-card" style="text-align:center;">
     <h2>Room code</h2>
     <div class="room-code-display" id="roomCodeDisplay"></div>
-    <div class="no-dict-note" id="waitingHint">Share this code with your friend so they can join.</div>
+    <button class="copy-code" id="copyCodeBtn">Copy / share code</button>
+    <div class="no-dict-note" id="waitingHint" style="margin-top:0;">Share this code with your friend so they can join.</div>
     <div class="waiting-players" id="waitingPlayersList"></div>
     <button id="startOnlineGameBtn" class="hidden">Start Game</button>
     <button class="back-link" id="leaveRoomBtn">Leave room</button>
   </div>
 </div>
 
-<!-- GAME -->
 <div id="gameScreen" class="hidden">
+  <div class="turn-timer" id="turnTimer"></div>
   <div class="online-bar hidden" id="onlineBar">
     <span id="roomCodeLabel"></span>
     <span class="turn-banner" id="turnBanner"></span>
-    <span id="turnTimer" aria-live="polite"></span>
   </div>
   <div class="score-strip" id="scoreStrip"></div>
   <div class="bag-count" id="bagCount"></div>
@@ -520,22 +598,28 @@
   </div>
   <div class="rack-wrap" id="rack"></div>
   <div class="status-line" id="statusLine"></div>
+  <div class="reaction-bar hidden" id="reactionBar">
+    <button class="reaction-btn" data-emoji="🔥" aria-label="React fire">🔥</button>
+    <button class="reaction-btn" data-emoji="😱" aria-label="React shocked">😱</button>
+    <button class="reaction-btn" data-emoji="👏" aria-label="React clap">👏</button>
+    <button class="reaction-btn" data-emoji="😂" aria-label="React laugh">😂</button>
+  </div>
+  <div class="reaction-toast" id="reactionToast"></div>
   <div class="actions-row">
     <button class="btn-secondary" id="recallBtn">Recall</button>
     <button class="btn-secondary" id="exchangeBtn">Exchange</button>
     <button class="btn-danger" id="passBtn">Pass</button>
     <button class="btn-primary" id="playBtn">Play Word</button>
   </div>
+  <button class="back-link hidden" id="quitOnlineBtn">Leave game</button>
 </div>
 
-<!-- TRANSITION -->
 <div id="transitionScreen" class="hidden">
   <div class="result-msg" id="resultMsg"></div>
   <div class="next-player" id="nextPlayerName"></div>
   <button id="readyBtn">I'm ready</button>
 </div>
 
-<!-- BLANK MODAL -->
 <div id="blankModal" class="hidden">
   <div class="blank-card">
     <h3>Choose a letter for the blank tile</h3>
@@ -544,27 +628,37 @@
   </div>
 </div>
 
-<!-- END -->
 <div id="endScreen" class="hidden">
   <div class="winner" id="winnerText"></div>
   <div class="final-scores" id="finalScores"></div>
   <button id="newGameBtn">New Game</button>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+var FIREBASE_CONFIG = {
+  apiKey:       "AIzaSyAh7-NvRtupasM8yfQOktCI_ku-MD4FNZI",
+  authDomain:   "mazard-tiles.firebaseapp.com",
+  projectId:    "mazard-tiles",
+  appId:        "1:193874194643:web:db897bb7567f8d243be426"
+};
+var FIREBASE_SDK_VERSION = "10.12.2";
+</script>
+
 <script>
 (function() {
-  // ===== Constants =====
-  const LETTER_VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
+  'use strict';
+
+  const LETTER_VALUES = {A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:8,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
   const LETTER_DISTRIBUTION = {A:9,B:2,C:2,D:4,E:12,F:2,G:3,H:2,I:9,J:1,K:1,L:4,M:2,N:6,O:8,P:2,Q:1,R:6,S:4,T:6,U:4,V:2,W:2,X:1,Y:2,Z:1};
   const BLANK_COUNT = 2;
   const RACK_SIZE = 7;
   const TURN_SECONDS = 90;
-
-  let DICTIONARY = null;
-  let dictionaryError = null;
-  let turnTimerHandle = null;
-  let turnDeadline = 0;
+  const MAX_SEATS = 4;
+  const EMPTY_BOARD_STR = '.'.repeat(225);
+  const ROOM_TTL_MS = 12 * 60 * 60 * 1000;
+  const LS_ID = 'mazardtiles.clientId';
+  const LS_SESSION = 'mazardtiles.session';
+  const LS_NAME = 'mazardtiles.name';
 
   function buildBonusLayout() {
     const layout = Array.from({length:15}, () => Array(15).fill(null));
@@ -582,6 +676,30 @@
     return layout;
   }
   const BONUS = buildBonusLayout();
+
+  let DICTIONARY = null;
+  let dictionaryError = null;
+
+  function loadDictionary() {
+    if (typeof fetch === 'undefined') return;
+    fetch('dictionary.txt')
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(text => {
+        DICTIONARY = new Set(
+          text.split('\n').map(w => w.trim().toUpperCase()).filter(Boolean)
+        );
+        dictionaryError = null;
+      })
+      .catch(err => {
+        console.warn('Could not load dictionary.txt (dictionary checking disabled if missing):', err);
+        DICTIONARY = null;
+        dictionaryError = null;
+      });
+  }
+  loadDictionary();
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -601,6 +719,30 @@
   }
 
   function makeBoard() { return Array.from({length:15}, () => Array(15).fill(null)); }
+
+  function boardToStr(b) {
+    let s = '';
+    for (let r = 0; r < 15; r++) {
+      for (let c = 0; c < 15; c++) {
+        const cell = b[r][c];
+        s += !cell ? '.' : (cell.isBlank ? cell.letter.toLowerCase() : cell.letter);
+      }
+    }
+    return s;
+  }
+
+  function strToBoard(s) {
+    const b = makeBoard();
+    if (typeof s !== 'string') return b;
+    for (let i = 0; i < 225 && i < s.length; i++) {
+      const ch = s[i];
+      if (ch === '.') continue;
+      const up = ch.toUpperCase();
+      if (up < 'A' || up > 'Z') continue;
+      b[Math.floor(i / 15)][i % 15] = { letter: up, isBlank: ch !== up };
+    }
+    return b;
+  }
 
   function getCell(board, pending, r, c) {
     if (r < 0 || r > 14 || c < 0 || c > 14) return null;
@@ -625,8 +767,22 @@
     return cells;
   }
 
+  function wordKey(word) {
+    if (!word || !word.length) return '';
+    return word[0].row + ',' + word[0].col + '->' + word[word.length - 1].row + ',' + word[word.length - 1].col;
+  }
+
   function validateAndScore(board, pending) {
-    if (pending.length === 0) return { valid: false, error: 'Place at least one tile.' };
+    if (!pending || pending.length === 0) return { valid: false, error: 'Place at least one tile.' };
+    const seen = new Set();
+    for (const t of pending) {
+      if (t.row < 0 || t.row > 14 || t.col < 0 || t.col > 14) return { valid: false, error: 'Tile placed off the board.' };
+      const key = t.row + ',' + t.col;
+      if (seen.has(key)) return { valid: false, error: 'Two tiles on the same square.' };
+      if (board[t.row][t.col]) return { valid: false, error: 'That square is already taken.' };
+      seen.add(key);
+    }
+
     const rows = [...new Set(pending.map(t => t.row))];
     const cols = [...new Set(pending.map(t => t.col))];
     let lineDir = null;
@@ -652,7 +808,8 @@
     const isFirstMove = board.every(row => row.every(cell => !cell));
     if (isFirstMove) {
       const coversCenter = pending.some(t => t.row === 7 && t.col === 7);
-      if (!coversCenter) return { valid: false, error: 'First word must cover the center star.' };
+      if (!coversCenter) return { valid: false, error: 'The first word must cover the centre star.' };
+      if (pending.length < 2) return { valid: false, error: 'The first word needs at least two letters.' };
     } else {
       const neighborsOf = (r,c) => [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
       const touchesExisting = pending.some(t => neighborsOf(t.row, t.col).some(([nr,nc]) => {
@@ -674,33 +831,37 @@
         }
       }
       if (!touchesExisting && !fillsGapWithExisting) {
-        return { valid: false, error: 'Word must connect to existing tiles on the board.' };
+        return { valid: false, error: 'Your word has to connect to tiles already on the board.' };
       }
     }
 
     const words = [];
+    const wordKeySet = new Set();
+    const tryAddWord = (w) => {
+      if (w && w.length >= 2) {
+        const wk = wordKey(w);
+        if (!wordKeySet.has(wk)) {
+          wordKeySet.add(wk);
+          words.push(w);
+        }
+      }
+    };
+
     if (lineDir) {
       const anchor = pending[0];
-      const mainWord = getWordAt(board, pending, anchor.row, anchor.col, lineDir);
-      if (mainWord.length >= 2) words.push(mainWord);
+      tryAddWord(getWordAt(board, pending, anchor.row, anchor.col, lineDir));
       const perpDir = lineDir === 'horizontal' ? 'vertical' : 'horizontal';
       pending.forEach(t => {
-        const cw = getWordAt(board, pending, t.row, t.col, perpDir);
-        if (cw.length >= 2) words.push(cw);
+        tryAddWord(getWordAt(board, pending, t.row, t.col, perpDir));
       });
     } else {
       const t = pending[0];
-      const wH = getWordAt(board, pending, t.row, t.col, 'horizontal');
-      const wV = getWordAt(board, pending, t.row, t.col, 'vertical');
-      if (wH.length >= 2) words.push(wH);
-      if (wV.length >= 2) words.push(wV);
-      if (words.length === 0) return { valid: false, error: 'Tile must connect to form a word.' };
+      tryAddWord(getWordAt(board, pending, t.row, t.col, 'horizontal'));
+      tryAddWord(getWordAt(board, pending, t.row, t.col, 'vertical'));
+      if (words.length === 0) return { valid: false, error: 'That tile has to join onto a word.' };
     }
 
-    if (typeof fetch !== 'undefined') {
-      if (!DICTIONARY) {
-        return { valid: false, error: dictionaryError || 'Dictionary is loading — wait a moment and try again.' };
-      }
+    if (typeof fetch !== 'undefined' && DICTIONARY) {
       for (const word of words) {
         const text = word.map(c => c.letter).join('').toUpperCase();
         if (!DICTIONARY.has(text)) {
@@ -715,7 +876,7 @@
       let letterSum = 0;
       let wordMult = 1;
       for (const cell of word) {
-        let val = cell.isBlank ? 0 : LETTER_VALUES[cell.letter];
+        let val = cell.isBlank ? 0 : (LETTER_VALUES[cell.letter] || 0);
         if (cell.isPending) {
           const bonus = BONUS[cell.row][cell.col];
           if (bonus === 'DL') val *= 2;
@@ -728,7 +889,7 @@
       }
       const wordScore = letterSum * wordMult;
       total += wordScore;
-      wordSummaries.push({ text: word.map(c=>c.letter).join(''), score: wordScore });
+      wordSummaries.push({ text: word.map(c => c.isBlank ? c.letter.toLowerCase() : c.letter).join(''), score: wordScore });
     }
 
     const bingo = pending.length === RACK_SIZE;
@@ -737,114 +898,129 @@
     return { valid: true, words: wordSummaries, score: total, bingo };
   }
 
-  // ===== Game State =====
   let players = [];
   let currentPlayerIndex = 0;
   let board = makeBoard();
   let bag = [];
+  let bagCount = 0;
   let pending = [];
   let selectedRackIndex = null;
   let exchangeMode = false;
   let exchangeSelection = [];
   let consecutivePasses = 0;
-  let pendingBlankTarget = null; // {row, col} awaiting letter choice
+  let pendingBlankTarget = null;
+  let lastPlayedKeys = new Set();
 
-  // ===== Online multiplayer state =====
-  let mode = 'local';          // 'local' | 'online'
-  let isHost = false;          // true if this device created the room
-  let myPlayerIndex = 0;       // which seat this device controls
+  let mode = 'local';
+  let myPlayerIndex = 0;
+  let mySeat = 0;
   let myName = '';
   let roomCode = '';
-  let peer = null;
-  let hostConn = null;         // client's single connection to the host
-  let connections = [];        // host's connections, in join order (seat 1, 2, 3...)
-  let gameStatus = 'lobby';    // 'lobby' | 'playing' | 'finished'
+  let isHost = false;
+  let gameStatus = 'lobby';
+  let viewMoveNo = 0;
+  let busy = false;
+  let roomUnsub = null;
+  let lastReactionId = null;
+
+  function store_get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function store_set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function store_del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  const myId = (function () {
+    let v = store_get(LS_ID);
+    if (!v) {
+      v = 'c' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      store_set(LS_ID, v);
+    }
+    return v;
+  })();
 
   function isMyTurn() {
-    return mode === 'local' || myPlayerIndex === currentPlayerIndex;
+    return mode === 'local' || (gameStatus === 'playing' && mySeat === currentPlayerIndex);
   }
 
   function generateRoomCode() {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no O/0/I/1/L to avoid confusion
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
     let s = '';
     for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
     return s;
   }
 
-  // ===== DOM refs =====
-  const welcomeScreen = document.getElementById('welcomeScreen');
-  const setupScreen = document.getElementById('setupScreen');
-  const onlineSetupScreen = document.getElementById('onlineSetupScreen');
-  const onlineWaitingScreen = document.getElementById('onlineWaitingScreen');
-  const gameScreen = document.getElementById('gameScreen');
-  const transitionScreen = document.getElementById('transitionScreen');
-  const endScreen = document.getElementById('endScreen');
-  const blankModal = document.getElementById('blankModal');
+  const $ = id => document.getElementById(id);
+  const welcomeScreen = $('welcomeScreen');
+  const setupScreen = $('setupScreen');
+  const onlineSetupScreen = $('onlineSetupScreen');
+  const onlineWaitingScreen = $('onlineWaitingScreen');
+  const gameScreen = $('gameScreen');
+  const transitionScreen = $('transitionScreen');
+  const endScreen = $('endScreen');
+  const blankModal = $('blankModal');
+  const subtitle = $('subtitle');
 
-  const chooseLocalBtn = document.getElementById('chooseLocalBtn');
-  const chooseOnlineBtn = document.getElementById('chooseOnlineBtn');
-  const backFromSetup = document.getElementById('backFromSetup');
-  const backFromOnlineSetup = document.getElementById('backFromOnlineSetup');
-  const onlineNameInput = document.getElementById('onlineNameInput');
-  const createRoomBtn = document.getElementById('createRoomBtn');
-  const joinCodeInput = document.getElementById('joinCodeInput');
-  const joinRoomBtn = document.getElementById('joinRoomBtn');
-  const onlineSetupStatus = document.getElementById('onlineSetupStatus');
-  const roomCodeDisplay = document.getElementById('roomCodeDisplay');
-  const waitingHint = document.getElementById('waitingHint');
-  const waitingPlayersList = document.getElementById('waitingPlayersList');
-  const startOnlineGameBtn = document.getElementById('startOnlineGameBtn');
-  const leaveRoomBtn = document.getElementById('leaveRoomBtn');
-  const onlineBar = document.getElementById('onlineBar');
-  const roomCodeLabel = document.getElementById('roomCodeLabel');
-  const turnBanner = document.getElementById('turnBanner');
+  const chooseLocalBtn = $('chooseLocalBtn');
+  const chooseOnlineBtn = $('chooseOnlineBtn');
+  const rejoinBtn = $('rejoinBtn');
+  const backFromSetup = $('backFromSetup');
+  const backFromOnlineSetup = $('backFromOnlineSetup');
+  const onlineForm = $('onlineForm');
+  const onlineUnavailable = $('onlineUnavailable');
+  const onlineNameInput = $('onlineNameInput');
+  const createRoomBtn = $('createRoomBtn');
+  const joinCodeInput = $('joinCodeInput');
+  const joinRoomBtn = $('joinRoomBtn');
+  const onlineSetupStatus = $('onlineSetupStatus');
+  const roomCodeDisplay = $('roomCodeDisplay');
+  const copyCodeBtn = $('copyCodeBtn');
+  const waitingHint = $('waitingHint');
+  const waitingPlayersList = $('waitingPlayersList');
+  const startOnlineGameBtn = $('startOnlineGameBtn');
+  const leaveRoomBtn = $('leaveRoomBtn');
+  const quitOnlineBtn = $('quitOnlineBtn');
+  const onlineBar = $('onlineBar');
+  const roomCodeLabel = $('roomCodeLabel');
+  const turnBanner = $('turnBanner');
+  const turnTimer = $('turnTimer');
+  const reactionBar = $('reactionBar');
+  const reactionToast = $('reactionToast');
 
-  const playerCountRow = document.getElementById('playerCountRow');
-  const nameInputs = document.getElementById('nameInputs');
-  const startBtn = document.getElementById('startBtn');
+  const playerCountRow = $('playerCountRow');
+  const nameInputs = $('nameInputs');
+  const startBtn = $('startBtn');
 
-  const scoreStrip = document.getElementById('scoreStrip');
-  const bagCountEl = document.getElementById('bagCount');
-  const boardEl = document.getElementById('board');
-  const rackEl = document.getElementById('rack');
-  const statusLine = document.getElementById('statusLine');
-  const recallBtn = document.getElementById('recallBtn');
-  const exchangeBtn = document.getElementById('exchangeBtn');
-  const passBtn = document.getElementById('passBtn');
-  const playBtn = document.getElementById('playBtn');
+  const scoreStrip = $('scoreStrip');
+  const bagCountEl = $('bagCount');
+  const boardEl = $('board');
+  const rackEl = $('rack');
+  const statusLine = $('statusLine');
+  const recallBtn = $('recallBtn');
+  const exchangeBtn = $('exchangeBtn');
+  const passBtn = $('passBtn');
+  const playBtn = $('playBtn');
 
-  const resultMsg = document.getElementById('resultMsg');
-  const nextPlayerName = document.getElementById('nextPlayerName');
-  const readyBtn = document.getElementById('readyBtn');
-  const turnTimer = document.getElementById('turnTimer');
+  const resultMsg = $('resultMsg');
+  const nextPlayerName = $('nextPlayerName');
+  const readyBtn = $('readyBtn');
 
-  const letterGrid = document.getElementById('letterGrid');
-  const blankCancelBtn = document.getElementById('blankCancelBtn');
+  const letterGrid = $('letterGrid');
+  const blankCancelBtn = $('blankCancelBtn');
 
-  const winnerText = document.getElementById('winnerText');
-  const finalScores = document.getElementById('finalScores');
-  const newGameBtn = document.getElementById('newGameBtn');
+  const winnerText = $('winnerText');
+  const finalScores = $('finalScores');
+  const newGameBtn = $('newGameBtn');
 
-  // ===== Welcome / mode switching =====
-  chooseLocalBtn.addEventListener('click', () => {
-    mode = 'local';
-    welcomeScreen.classList.add('hidden');
-    setupScreen.classList.remove('hidden');
-  });
-  chooseOnlineBtn.addEventListener('click', () => {
-    welcomeScreen.classList.add('hidden');
-    onlineSetupScreen.classList.remove('hidden');
-  });
-  backFromSetup.addEventListener('click', () => {
-    setupScreen.classList.add('hidden');
-    welcomeScreen.classList.remove('hidden');
-  });
-  backFromOnlineSetup.addEventListener('click', () => {
-    onlineSetupScreen.classList.add('hidden');
-    welcomeScreen.classList.remove('hidden');
-  });
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 
-  // ===== Setup =====
+  function showOnly(el) {
+    [welcomeScreen, setupScreen, onlineSetupScreen, onlineWaitingScreen, gameScreen, endScreen].forEach(s => s.classList.add('hidden'));
+    transitionScreen.classList.add('hidden');
+    if (el) el.classList.remove('hidden');
+    document.body.classList.toggle('playing', el === gameScreen);
+    subtitle.classList.toggle('hidden', el === gameScreen || el === endScreen);
+  }
+
   let selectedCount = 2;
   playerCountRow.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -855,6 +1031,11 @@
   });
 
   function renderNameInputs() {
+    const previous = [];
+    for (let i = 0; i < 4; i++) {
+      const el = $('nameInput' + i);
+      previous.push(el ? el.value : '');
+    }
     nameInputs.innerHTML = '';
     for (let i = 0; i < selectedCount; i++) {
       const input = document.createElement('input');
@@ -862,32 +1043,78 @@
       input.placeholder = 'Player ' + (i + 1);
       input.id = 'nameInput' + i;
       input.maxLength = 16;
+      input.value = previous[i] || '';
       nameInputs.appendChild(input);
     }
   }
   renderNameInputs();
 
+  function resetTurnUi() {
+    pending = [];
+    selectedRackIndex = null;
+    exchangeMode = false;
+    exchangeSelection = [];
+    exchangeBtn.textContent = 'Exchange';
+    pendingBlankTarget = null;
+    blankModal.classList.add('hidden');
+    setActionsDisabled(false);
+    setStatus('');
+    stopTurnTimer();
+  }
+
+  let turnDeadline = null;
+  let turnTickHandle = null;
+
+  function startTurnTimer(deadlineMs) {
+    stopTurnTimer();
+    turnDeadline = deadlineMs;
+    tickTurnTimer();
+    turnTickHandle = setInterval(tickTurnTimer, 250);
+  }
+
+  function stopTurnTimer() {
+    if (turnTickHandle) { clearInterval(turnTickHandle); turnTickHandle = null; }
+    turnDeadline = null;
+    if (turnTimer) { turnTimer.textContent = ''; turnTimer.classList.remove('low'); }
+  }
+
+  function tickTurnTimer() {
+    if (!turnDeadline || !turnTimer) return;
+    const remaining = Math.max(0, Math.ceil((turnDeadline - Date.now()) / 1000));
+    const mm = Math.floor(remaining / 60);
+    const ss = String(remaining % 60).padStart(2, '0');
+    const whoName = players[currentPlayerIndex] ? players[currentPlayerIndex].name : '';
+    const label = (mode === 'local' && whoName) ? whoName + '’s turn — ' : '';
+    turnTimer.textContent = label + mm + ':' + ss;
+    turnTimer.classList.toggle('low', remaining <= 10);
+    if (remaining <= 0) {
+      stopTurnTimer();
+      if (isMyTurn() && !passBtn.disabled && !busy) passBtn.click();
+    }
+  }
+
   startBtn.addEventListener('click', () => {
     players = [];
     for (let i = 0; i < selectedCount; i++) {
-      const input = document.getElementById('nameInput' + i);
+      const input = $('nameInput' + i);
       const name = (input.value || '').trim() || ('Player ' + (i + 1));
       players.push({ name, rack: [], score: 0 });
     }
+    mode = 'local';
     board = makeBoard();
     bag = buildBag();
     currentPlayerIndex = 0;
     myPlayerIndex = 0;
     consecutivePasses = 0;
+    lastPlayedKeys = new Set();
     players.forEach(p => drawTiles(p, RACK_SIZE));
-    currentPlayerIndex = 0;
-    myPlayerIndex = 0;
-    gameStatus = 'playing';
-
-    setupScreen.classList.add('hidden');
-    gameScreen.classList.remove('hidden');
+    resetTurnUi();
+    onlineBar.classList.add('hidden');
+    reactionBar.classList.add('hidden');
+    quitOnlineBtn.classList.add('hidden');
+    showOnly(gameScreen);
     renderAll();
-    startTurnTimer();
+    startTurnTimer(Date.now() + TURN_SECONDS * 1000);
   });
 
   function drawTiles(player, count) {
@@ -895,164 +1122,102 @@
     for (let i = 0; i < n; i++) player.rack.push(bag.pop());
   }
 
-  function loadDictionary() {
-    if (typeof fetch === 'undefined') return;
-    fetch('dictionary.txt')
-      .then(res => {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      })
-      .then(text => {
-        DICTIONARY = new Set(
-          text.split(/\s+/).map(w => w.trim().toUpperCase()).filter(Boolean)
-        );
-        dictionaryError = null;
-      })
-      .catch(err => {
-        console.error('Could not load dictionary.txt:', err);
-        DICTIONARY = null;
-        dictionaryError = 'Dictionary is still loading or unavailable — wait a moment and try again.';
-      });
-  }
-  loadDictionary();
-
-  // ===== Rendering =====
-  function renderAll() {
-    renderScores();
-    renderBag();
-    renderBoard();
-    renderRack();
-    updateTurnTimerDisplay();
-  }
-
-  function formatTurnTime(msLeft) {
-    const totalSeconds = Math.max(0, Math.ceil(msLeft / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return minutes + ':' + String(seconds).padStart(2, '0');
-  }
-
-  function stopTurnTimer() {
-    if (turnTimerHandle) {
-      clearInterval(turnTimerHandle);
-      turnTimerHandle = null;
-    }
-    turnDeadline = 0;
-    if (turnTimer) turnTimer.textContent = '';
-  }
-
-  function updateTurnTimerDisplay() {
-    if (!turnTimer) return;
-    if (turnDeadline <= 0 || !players.length) {
-      turnTimer.textContent = '';
-      return;
-    }
-    const left = turnDeadline - Date.now();
-    turnTimer.textContent = formatTurnTime(left);
-  }
-
-  function startTurnTimer() {
-    stopTurnTimer();
-    if (!players.length || gameStatus === 'finished') return;
-    turnDeadline = Date.now() + TURN_SECONDS * 1000;
-    updateTurnTimerDisplay();
-    turnTimerHandle = setInterval(() => {
-      const left = turnDeadline - Date.now();
-      if (left <= 0) {
-        if (mode === 'online') {
-          if (isMyTurn()) {
-            const name = players[currentPlayerIndex] ? players[currentPlayerIndex].name : 'Player';
-            if (isHost) {
-              hostAdvanceTurn(name + ' ran out of time and passed.');
-            } else {
-              try { hostConn.send({ type: 'pass' }); } catch (e) {}
-              setStatus('Time is up — passed automatically.', 'error');
-              disableOnlineActions(true);
-            }
-          }
-        } else if (isMyTurn()) {
-          const player = players[myPlayerIndex];
-          pending.forEach(t => player.rack.push(t.originalLetter));
-          pending = [];
-          const turnName = player ? player.name : 'Player';
-          setStatus('Time is up — auto pass.', 'error');
-          endTurn(turnName + ' ran out of time and passed.');
-        }
-        stopTurnTimer();
-        return;
+  let boardCells = [];
+  function buildBoardGrid() {
+    boardEl.innerHTML = '';
+    boardCells = [];
+    const frag = document.createDocumentFragment();
+    for (let r = 0; r < 15; r++) {
+      for (let c = 0; c < 15; c++) {
+        const d = document.createElement('div');
+        const bonus = BONUS[r][c];
+        d.className = 'cell' + (bonus ? ' ' + bonus : '');
+        d.dataset.idx = r * 15 + c;
+        if (bonus === 'STAR') d.textContent = '★';
+        else if (bonus) d.textContent = bonus;
+        boardCells.push(d);
+        frag.appendChild(d);
       }
-      updateTurnTimerDisplay();
-    }, 250);
+    }
+    boardEl.appendChild(frag);
+    boardEl.addEventListener('click', e => {
+      const cell = e.target.closest('.cell');
+      if (!cell || !cell.dataset.idx) return;
+      const i = parseInt(cell.dataset.idx, 10);
+      onCellClick(Math.floor(i / 15), i % 15);
+    });
+  }
+  buildBoardGrid();
+
+  function renderBoard() {
+    for (let i = 0; i < 225; i++) {
+      const r = Math.floor(i / 15), c = i % 15;
+      const cell = boardCells[i];
+      const committed = board[r][c];
+      const pend = pending.find(t => t.row === r && t.col === c);
+      const info = pend || committed;
+      const existing = cell.firstElementChild;
+      if (!info) { if (existing) existing.remove(); continue; }
+      const cls = 'tile'
+        + (pend ? ' pending' : '')
+        + (info.isBlank ? ' blank-tile' : '')
+        + (!pend && lastPlayedKeys.has(i) ? ' just-played' : '');
+      const html = escapeHtml(info.letter) + (info.isBlank ? '' : '<span class="tval">' + LETTER_VALUES[info.letter] + '</span>');
+      if (existing) {
+        if (existing.className !== cls) existing.className = cls;
+        if (existing.innerHTML !== html) existing.innerHTML = html;
+      } else {
+        const t = document.createElement('div');
+        t.className = cls;
+        t.innerHTML = html;
+        cell.appendChild(t);
+      }
+    }
   }
 
   function renderScores() {
     scoreStrip.innerHTML = '';
     players.forEach((p, i) => {
       const chip = document.createElement('div');
-      chip.className = 'score-chip' + (i === currentPlayerIndex ? ' current' : '');
+      chip.className = 'score-chip'
+        + (i === currentPlayerIndex ? ' current' : '')
+        + (mode === 'online' && p.online === false ? ' gone' : '');
       const count = typeof p.rackCount === 'number' ? p.rackCount : (p.rack ? p.rack.length : null);
-      const countLabel = (mode === 'online' && count != null) ? `<div class="prack">${count} tiles</div>` : '';
-      chip.innerHTML = `<div class="pname">${escapeHtml(p.name)}</div><div class="pscore">${p.score}</div>${countLabel}`;
+      const label = mode === 'online' && count != null
+        ? '<div class="prack">' + count + ' tile' + (count === 1 ? '' : 's') + (p.online === false ? ' · away' : '') + '</div>'
+        : '';
+      const you = (mode === 'online' && i === mySeat) ? ' (you)' : '';
+      chip.innerHTML = '<div class="pname">' + escapeHtml(p.name) + you + '</div>'
+        + '<div class="pscore">' + p.score + '</div>' + label;
       scoreStrip.appendChild(chip);
     });
   }
 
-  let bagCount = 0; // used in online mode (client & host display); local mode reads bag.length directly
-
   function renderBag() {
     const count = mode === 'local' ? bag.length : bagCount;
-    bagCountEl.textContent = count + ' tiles left in bag';
-  }
-
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function renderBoard() {
-    boardEl.innerHTML = '';
-    for (let r = 0; r < 15; r++) {
-      for (let c = 0; c < 15; c++) {
-        const cellDiv = document.createElement('div');
-        const bonus = BONUS[r][c];
-        cellDiv.className = 'cell' + (bonus ? ' ' + bonus : '');
-        cellDiv.dataset.row = r;
-        cellDiv.dataset.col = c;
-        if (bonus === 'STAR') {
-          cellDiv.textContent = '★';
-        } else if (bonus) {
-          cellDiv.textContent = bonus;
-        }
-
-        const committed = board[r][c];
-        const pend = pending.find(t => t.row === r && t.col === c);
-
-        if (committed || pend) {
-          const tile = document.createElement('div');
-          const info = pend || committed;
-          tile.className = 'tile' + (pend ? ' pending' : '') + (info.isBlank ? ' blank-tile' : '');
-          tile.innerHTML = escapeHtml(info.letter) + (info.isBlank ? '' : `<span class="tval">${LETTER_VALUES[info.letter]}</span>`);
-          cellDiv.appendChild(tile);
-        }
-
-        cellDiv.addEventListener('click', () => onCellClick(r, c));
-        boardEl.appendChild(cellDiv);
-      }
-    }
+    bagCountEl.textContent = count + ' tile' + (count === 1 ? '' : 's') + ' left in the bag';
   }
 
   function renderRack() {
     rackEl.innerHTML = '';
-    const player = players[myPlayerIndex];
+    const player = myPlayer();
+    if (!player || !player.rack) return;
     player.rack.forEach((letter, idx) => {
       const tile = document.createElement('div');
       tile.className = 'rack-tile' + (letter === '?' ? ' blank-tile' : '');
       if (selectedRackIndex === idx) tile.classList.add('selected');
       if (exchangeMode && exchangeSelection.includes(idx)) tile.classList.add('exchange-marked');
-      const val = letter === '?' ? '' : `<span class="tval">${LETTER_VALUES[letter]}</span>`;
-      tile.innerHTML = (letter === '?' ? '' : letter) + val;
+      tile.innerHTML = letter === '?' ? '' : escapeHtml(letter) + '<span class="tval">' + LETTER_VALUES[letter] + '</span>';
       tile.addEventListener('click', () => onRackTileClick(idx));
       rackEl.appendChild(tile);
     });
+  }
+
+  function renderAll() {
+    renderScores();
+    renderBag();
+    renderBoard();
+    renderRack();
   }
 
   function setStatus(msg, type) {
@@ -1060,9 +1225,16 @@
     statusLine.className = 'status-line' + (type ? ' ' + type : '');
   }
 
-  // ===== Interaction =====
+  function setActionsDisabled(disabled) {
+    [recallBtn, exchangeBtn, passBtn, playBtn].forEach(b => { b.disabled = !!disabled; });
+  }
+
+  function myPlayer() {
+    return players[mode === 'online' ? mySeat : myPlayerIndex];
+  }
+
   function onRackTileClick(idx) {
-    if (!isMyTurn()) return;
+    if (!isMyTurn() || busy) return;
     if (exchangeMode) {
       const pos = exchangeSelection.indexOf(idx);
       if (pos >= 0) exchangeSelection.splice(pos, 1);
@@ -1075,14 +1247,13 @@
   }
 
   function onCellClick(r, c) {
-    if (!isMyTurn()) return;
+    if (!isMyTurn() || busy) return;
     if (exchangeMode) return;
 
     const pendIdx = pending.findIndex(t => t.row === r && t.col === c);
     if (pendIdx >= 0) {
-      // recall this single tile back to rack
       const t = pending[pendIdx];
-      players[myPlayerIndex].rack.push(t.originalLetter);
+      myPlayer().rack.push(t.originalLetter);
       pending.splice(pendIdx, 1);
       renderBoard();
       renderRack();
@@ -1090,28 +1261,24 @@
       return;
     }
 
-    if (board[r][c]) return; // already committed, can't touch
+    if (board[r][c]) return;
 
     if (selectedRackIndex == null) {
-      setStatus('Select a tile from your rack first.', null);
+      setStatus('Pick a tile from your rack first.', null);
       return;
     }
 
-    const player = players[myPlayerIndex];
-    const letter = player.rack[selectedRackIndex];
-
+    const letter = myPlayer().rack[selectedRackIndex];
     if (letter === '?') {
       pendingBlankTarget = { row: r, col: c, rackIndex: selectedRackIndex };
       openBlankModal();
       return;
     }
-
-    placeTileOnBoard(r, c, letter, false, letter);
+    placeTileOnBoard(r, c, letter, false, letter, selectedRackIndex);
   }
 
-  function placeTileOnBoard(row, col, letter, isBlank, originalLetter) {
-    const player = players[myPlayerIndex];
-    const rackIdx = isBlank ? pendingBlankTarget.rackIndex : selectedRackIndex;
+  function placeTileOnBoard(row, col, letter, isBlank, originalLetter, rackIdx) {
+    const player = myPlayer();
     player.rack.splice(rackIdx, 1);
     pending.push({ row, col, letter, isBlank, originalLetter });
     selectedRackIndex = null;
@@ -1121,15 +1288,16 @@
     setStatus('');
   }
 
-  // ===== Blank modal =====
   function openBlankModal() {
     letterGrid.innerHTML = '';
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(ch => {
       const btn = document.createElement('button');
       btn.textContent = ch;
       btn.addEventListener('click', () => {
-        placeTileOnBoard(pendingBlankTarget.row, pendingBlankTarget.col, ch, true, '?');
+        if (!pendingBlankTarget) { blankModal.classList.add('hidden'); return; }
+        const t = pendingBlankTarget;
         blankModal.classList.add('hidden');
+        placeTileOnBoard(t.row, t.col, ch, true, '?', t.rackIndex);
       });
       letterGrid.appendChild(btn);
     });
@@ -1140,10 +1308,9 @@
     blankModal.classList.add('hidden');
   });
 
-  // ===== Actions =====
   recallBtn.addEventListener('click', () => {
-    if (!isMyTurn()) return;
-    const player = players[myPlayerIndex];
+    if (!isMyTurn() || busy) return;
+    const player = myPlayer();
     pending.forEach(t => player.rack.push(t.originalLetter));
     pending = [];
     selectedRackIndex = null;
@@ -1153,7 +1320,7 @@
   });
 
   exchangeBtn.addEventListener('click', () => {
-    if (!isMyTurn()) return;
+    if (!isMyTurn() || busy) return;
     if (!exchangeMode) {
       if (pending.length > 0) {
         setStatus('Recall your placed tiles before exchanging.', 'error');
@@ -1162,7 +1329,7 @@
       exchangeMode = true;
       exchangeSelection = [];
       exchangeBtn.textContent = 'Confirm Exchange';
-      setStatus('Tap tiles to exchange, then tap Confirm Exchange.', null);
+      setStatus('Tap the tiles you want to swap, then tap Confirm Exchange.', null);
       renderRack();
       return;
     }
@@ -1171,31 +1338,26 @@
 
   function doExchange() {
     if (exchangeSelection.length === 0) {
-      // Nothing selected - treat this tap as "cancel exchange".
       exchangeMode = false;
       exchangeBtn.textContent = 'Exchange';
       setStatus('');
       renderRack();
       return;
     }
-    const player = players[myPlayerIndex];
-    const lettersOut = exchangeSelection.map(idx => player.rack[idx]);
+    const player = myPlayer();
+    const lettersOut = exchangeSelection.slice().sort((a, b) => a - b).map(idx => player.rack[idx]);
 
-    if (mode === 'online' && !isHost) {
-      hostConn.send({ type: 'exchange', letters: lettersOut });
-      exchangeMode = false;
-      exchangeSelection = [];
-      exchangeBtn.textContent = 'Exchange';
-      setStatus('Submitting exchange…', null);
-      disableOnlineActions(true);
+    if (mode === 'online') {
+      submitMove('exchange', { letters: lettersOut });
       return;
     }
 
     if (bag.length < lettersOut.length) {
-      setStatus('Not enough tiles left in the bag to exchange that many.', 'error');
+      setStatus('There aren’t enough tiles left in the bag for that.', 'error');
       return;
     }
-    player.rack = player.rack.filter((_, idx) => !exchangeSelection.includes(idx));
+    const chosen = new Set(exchangeSelection);
+    player.rack = player.rack.filter((_, idx) => !chosen.has(idx));
     bag.push(...lettersOut);
     shuffle(bag);
     drawTiles(player, lettersOut.length);
@@ -1203,51 +1365,43 @@
     exchangeSelection = [];
     exchangeBtn.textContent = 'Exchange';
     consecutivePasses += 1;
-    const msg = 'Exchanged ' + lettersOut.length + ' tile' + (lettersOut.length > 1 ? 's' : '') + '.';
-    if (mode === 'online') hostAdvanceTurn(msg); else endTurn(msg);
+    endTurn(player.name + ' swapped ' + lettersOut.length + ' tile' + (lettersOut.length > 1 ? 's' : '') + '.');
   }
 
   passBtn.addEventListener('click', () => {
-    if (!isMyTurn()) return;
-    const player = players[myPlayerIndex];
+    if (!isMyTurn() || busy) return;
+    const player = myPlayer();
     pending.forEach(t => player.rack.push(t.originalLetter));
     pending = [];
+    renderBoard();
+    renderRack();
 
-    if (mode === 'online' && !isHost) {
-      hostConn.send({ type: 'pass' });
-      setStatus('Passing…', null);
-      disableOnlineActions(true);
+    if (mode === 'online') {
+      submitMove('pass', {});
       return;
     }
-
     consecutivePasses += 1;
-    const msg = player.name + ' passed.';
-    if (mode === 'online') hostAdvanceTurn(msg); else endTurn(msg);
+    endTurn(player.name + ' passed.');
   });
 
   playBtn.addEventListener('click', () => {
-    if (!isMyTurn()) return;
+    if (!isMyTurn() || busy) return;
     if (pending.length === 0) {
       setStatus('Place at least one tile on the board first.', 'error');
       return;
     }
 
-    if (mode === 'online' && !isHost) {
-      hostConn.send({ type: 'playWord', tiles: pending.map(t => ({ row: t.row, col: t.col, letter: t.letter, isBlank: t.isBlank })) });
-      setStatus('Submitting your play…', null);
-      disableOnlineActions(true);
+    const result = validateAndScore(board, pending);
+    if (!result.valid) { setStatus(result.error, 'error'); return; }
+
+    if (mode === 'online') {
+      submitMove('play', { tiles: pending.map(t => ({ row: t.row, col: t.col, letter: t.letter, isBlank: !!t.isBlank, originalLetter: t.originalLetter })) });
       return;
     }
 
-    const result = validateAndScore(board, pending);
-    if (!result.valid) {
-      setStatus(result.error, 'error');
-      return;
-    }
-    const player = players[myPlayerIndex];
-    pending.forEach(t => {
-      board[t.row][t.col] = { letter: t.letter, isBlank: t.isBlank };
-    });
+    const player = myPlayer();
+    lastPlayedKeys = new Set(pending.map(t => t.row * 15 + t.col));
+    pending.forEach(t => { board[t.row][t.col] = { letter: t.letter, isBlank: t.isBlank }; });
     player.score += result.score;
     pending = [];
     drawTiles(player, RACK_SIZE - player.rack.length);
@@ -1255,29 +1409,24 @@
 
     const wordList = result.words.map(w => w.text + ' (' + w.score + ')').join(', ');
     let msg = player.name + ' played ' + wordList + ' for ' + result.score + ' points.';
-    if (result.bingo) msg += ' Bingo! +50 bonus included.';
-    if (mode === 'online') hostAdvanceTurn(msg); else endTurn(msg);
+    if (result.bingo) msg += ' Bingo — that’s +50 included.';
+    endTurn(msg);
   });
 
-  // ===== Turn management (local pass & play) =====
   function endTurn(message) {
+    stopTurnTimer();
     selectedRackIndex = null;
     exchangeMode = false;
     exchangeSelection = [];
     exchangeBtn.textContent = 'Exchange';
     setStatus('');
 
-    if (checkEndGame()) {
-      stopTurnTimer();
-      showEndScreen(message);
-      return;
-    }
+    if (checkEndGame()) { showEndScreen(message); return; }
 
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
     myPlayerIndex = currentPlayerIndex;
     resultMsg.textContent = message;
-    startTurnTimer();
-    nextPlayerName.textContent = players[currentPlayerIndex].name + "'s turn";
+    nextPlayerName.textContent = players[currentPlayerIndex].name + '’s turn';
     gameScreen.classList.add('hidden');
     transitionScreen.classList.remove('hidden');
   }
@@ -1286,6 +1435,7 @@
     transitionScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
     renderAll();
+    startTurnTimer(Date.now() + TURN_SECONDS * 1000);
   });
 
   function checkEndGame() {
@@ -1301,415 +1451,703 @@
       p.score -= remainingValue;
       if (wentOut && wentOut !== p) wentOut.score += remainingValue;
     });
-    renderFinalScoreScreen(players);
+    renderFinalScoreScreen(players, message);
   }
 
-  function renderFinalScoreScreen(finalPlayers) {
-    const maxScore = Math.max(...finalPlayers.map(p => p.score));
-    const winners = finalPlayers.filter(p => p.score === maxScore);
+  function renderFinalScoreScreen(finalPlayers, message) {
+    stopTurnTimer();
+    const list = finalPlayers.map(p => ({ name: p.name, score: p.score }));
+    const maxScore = Math.max(...list.map(p => p.score));
+    const winners = list.filter(p => p.score === maxScore);
 
-    gameScreen.classList.add('hidden');
-    transitionScreen.classList.add('hidden');
-    onlineWaitingScreen.classList.add('hidden');
-    endScreen.classList.remove('hidden');
+    showOnly(endScreen);
+    onlineBar.classList.add('hidden');
+    reactionBar.classList.add('hidden');
 
     winnerText.textContent = winners.length > 1
-      ? 'Tie game: ' + winners.map(w => w.name).join(' & ') + ' at ' + maxScore + ' points!'
-      : winners[0].name + ' wins with ' + maxScore + ' points!';
+      ? 'Tie game — ' + winners.map(w => w.name).join(' & ') + ' on ' + maxScore + ' points'
+      : winners[0].name + ' wins with ' + maxScore + ' points';
 
-    finalScores.innerHTML = finalPlayers
-      .slice()
-      .sort((a,b) => b.score - a.score)
-      .map(p => `<div class="row"><span>${escapeHtml(p.name)}</span><span>${p.score}</span></div>`)
-      .join('');
+    finalScores.innerHTML = (message ? '<div class="row" style="border-bottom:1px solid rgba(128,128,128,0.25);padding-bottom:10px;margin-bottom:6px;"><span style="font-size:13px;color:var(--text-dim);text-align:left;">' + escapeHtml(message) + '</span></div>' : '')
+      + list.slice().sort((a,b) => b.score - a.score)
+        .map(p => '<div class="row"><span>' + escapeHtml(p.name) + '</span><span>' + p.score + '</span></div>')
+        .join('');
   }
 
-  newGameBtn.addEventListener('click', () => {
-    endScreen.classList.add('hidden');
-    cleanupOnline();
+  newGameBtn.addEventListener('click', async () => {
+    await teardownOnline(true);
     mode = 'local';
-    welcomeScreen.classList.remove('hidden');
+    players = [];
+    board = makeBoard();
+    bag = [];
+    bagCount = 0;
+    lastPlayedKeys = new Set();
+    resetTurnUi();
+    renderBoard();
+    onlineBar.classList.add('hidden');
+    reactionBar.classList.add('hidden');
+    quitOnlineBtn.classList.add('hidden');
+    showOnly(welcomeScreen);
+    refreshRejoinButton();
   });
 
-  // ================= ONLINE MULTIPLAYER =================
+  chooseLocalBtn.addEventListener('click', () => {
+    mode = 'local';
+    resetTurnUi();
+    showOnly(setupScreen);
+  });
+  chooseOnlineBtn.addEventListener('click', () => {
+    onlineSetupStatus.textContent = '';
+    onlineNameInput.value = store_get(LS_NAME) || '';
+    showOnly(onlineSetupScreen);
+    applyFirebaseAvailability();
+  });
+  backFromSetup.addEventListener('click', () => showOnly(welcomeScreen));
+  backFromOnlineSetup.addEventListener('click', () => showOnly(welcomeScreen));
 
-  function disableOnlineActions(disabled) {
-    [recallBtn, exchangeBtn, passBtn, playBtn].forEach(b => b.disabled = disabled);
+  // ═══════════════════════════════════════════════════════════════════
+  //  ONLINE  —  Cloud Firestore
+  // ═══════════════════════════════════════════════════════════════════
+
+  const FB = { ready: false, loading: null, db: null, api: null };
+
+  function firebaseConfigured() {
+    const c = window.FIREBASE_CONFIG || {};
+    return !!(c.projectId && c.apiKey);
   }
 
-  function updateOnlineTurnBanner() {
+  function applyFirebaseAvailability() {
+    const ok = firebaseConfigured();
+    onlineForm.classList.toggle('hidden', !ok);
+    onlineUnavailable.classList.toggle('hidden', ok);
+    if (!ok) {
+      onlineUnavailable.innerHTML =
+        '<strong>Online play isn’t configured.</strong>' +
+        '<div style="margin-top:8px;">Ensure <code>projectId</code> and <code>apiKey</code> are set in <code>FIREBASE_CONFIG</code>.</div>';
+    }
+  }
+
+  function loadFirebase() {
+    if (FB.ready) return Promise.resolve(FB);
+    if (FB.loading) return FB.loading;
+    const base = 'https://www.gstatic.com/firebasejs/' + (window.FIREBASE_SDK_VERSION || '10.12.2') + '/';
+    FB.loading = Promise.all([
+      import(base + 'firebase-app.js'),
+      import(base + 'firebase-firestore.js')
+    ]).then(([appMod, fsMod]) => {
+      const app = appMod.getApps && appMod.getApps().length
+        ? appMod.getApp()
+        : appMod.initializeApp(window.FIREBASE_CONFIG);
+      FB.db = fsMod.getFirestore(app);
+      FB.api = fsMod;
+      FB.ready = true;
+      return FB;
+    }).catch(err => {
+      FB.loading = null;
+      throw err;
+    });
+    return FB.loading;
+  }
+
+  function roomDoc(code) { return FB.api.doc(FB.db, 'rooms', code); }
+
+  function seatKeys(room) {
+    return Object.keys(room.seats || {}).sort((a, b) => Number(a) - Number(b));
+  }
+
+  function friendlyError(err) {
+    const msg = String((err && (err.message || err.code)) || err || '');
+    if (/permission[-_ ]denied/i.test(msg)) {
+      return 'The database rejected that (permission denied). Check your Cloud Firestore rules.';
+    }
+    if (/Failed to fetch|dynamically imported|NetworkError|importing a module/i.test(msg)) {
+      return 'Couldn’t load Firestore. Check your internet connection, then reload.';
+    }
+    if (/invalid-api-key|api-key-not-valid/i.test(msg)) {
+      return 'The Firebase API key isn’t valid. Check your FIREBASE_CONFIG.';
+    }
+    return msg || 'Something went wrong. Try again.';
+  }
+
+  function freshRoom(name) {
+    const now = Date.now();
+    return {
+      v: 1,
+      createdAt: now,
+      updatedAt: now,
+      status: 'lobby',
+      hostId: myId,
+      seats: { '0': { id: myId, name: name, score: 0, rack: '', online: true } },
+      board: EMPTY_BOARD_STR,
+      bag: '',
+      turn: 0,
+      passes: 0,
+      lastMove: '',
+      moveNo: 0,
+      reaction: null
+    };
+  }
+
+  createRoomBtn.addEventListener('click', async () => {
+    const name = (onlineNameInput.value || '').trim().slice(0, 16) || 'Player 1';
+    store_set(LS_NAME, name);
+    myName = name;
+    createRoomBtn.disabled = true;
+    joinRoomBtn.disabled = true;
+    onlineSetupStatus.className = 'status-line';
+    onlineSetupStatus.textContent = 'Creating a room…';
+    try {
+      await loadFirebase();
+      let code = null;
+      for (let attempt = 0; attempt < 8 && !code; attempt++) {
+        const candidate = generateRoomCode();
+        const ref = roomDoc(candidate);
+        try {
+          await FB.api.runTransaction(FB.db, async (txn) => {
+            const snap = await txn.get(ref);
+            if (snap.exists()) {
+              const data = snap.data();
+              if ((Date.now() - (data.createdAt || 0)) < ROOM_TTL_MS) {
+                throw new Error('COLLISION');
+              }
+            }
+            txn.set(ref, freshRoom(name));
+          });
+          code = candidate;
+        } catch (e) {
+          if (e.message !== 'COLLISION') throw e;
+        }
+      }
+      if (!code) throw new Error('Couldn’t find a free room code. Try again in a moment.');
+      roomCode = code;
+      isHost = true;
+      mode = 'online';
+      mySeat = 0;
+      gameStatus = 'lobby';
+      saveSession();
+      subscribeRoom();
+      onlineSetupStatus.textContent = '';
+      showOnly(onlineWaitingScreen);
+    } catch (err) {
+      console.error(err);
+      onlineSetupStatus.className = 'status-line error';
+      onlineSetupStatus.textContent = friendlyError(err);
+    } finally {
+      createRoomBtn.disabled = false;
+      joinRoomBtn.disabled = false;
+    }
+  });
+
+  joinRoomBtn.addEventListener('click', () => doJoin(
+    (joinCodeInput.value || '').trim().toUpperCase(),
+    (onlineNameInput.value || '').trim().slice(0, 16) || 'Player'
+  ));
+
+  joinCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') joinRoomBtn.click(); });
+
+  async function doJoin(code, name) {
+    if (!code) {
+      onlineSetupStatus.className = 'status-line error';
+      onlineSetupStatus.textContent = 'Enter the 4-character room code.';
+      return;
+    }
+    store_set(LS_NAME, name);
+    myName = name;
+    createRoomBtn.disabled = true;
+    joinRoomBtn.disabled = true;
+    onlineSetupStatus.className = 'status-line';
+    onlineSetupStatus.textContent = 'Joining…';
+    try {
+      await loadFirebase();
+      const ref = roomDoc(code);
+      let assignedSeat = null;
+      let roomStatus = 'lobby';
+      let hostId = '';
+
+      await FB.api.runTransaction(FB.db, async (txn) => {
+        const snap = await txn.get(ref);
+        if (!snap.exists()) {
+          throw new Error('No room with that code. Check it and try again.');
+        }
+        const cur = snap.data();
+        const seats = { ...(cur.seats || {}) };
+        const keys = Object.keys(seats);
+        const mine = keys.find(k => seats[k].id === myId);
+
+        if (mine) {
+          seats[mine] = { ...seats[mine], online: true, name: name };
+          assignedSeat = Number(mine);
+        } else {
+          if (cur.status !== 'lobby') {
+            throw new Error('That game has already started.');
+          }
+          if (keys.length >= MAX_SEATS) {
+            throw new Error('That room is full (4 players max).');
+          }
+          assignedSeat = keys.length;
+          seats[String(assignedSeat)] = { id: myId, name: name, score: 0, rack: '', online: true };
+        }
+
+        roomStatus = cur.status;
+        hostId = cur.hostId;
+        txn.update(ref, { seats: seats, updatedAt: Date.now() });
+      });
+
+      roomCode = code;
+      mySeat = assignedSeat;
+      isHost = hostId === myId;
+      mode = 'online';
+      gameStatus = roomStatus;
+      saveSession();
+      subscribeRoom();
+      onlineSetupStatus.textContent = '';
+    } catch (err) {
+      console.error(err);
+      onlineSetupStatus.className = 'status-line error';
+      onlineSetupStatus.textContent = friendlyError(err);
+    } finally {
+      createRoomBtn.disabled = false;
+      joinRoomBtn.disabled = false;
+    }
+  }
+
+  function subscribeRoom() {
+    if (roomUnsub) { try { roomUnsub(); } catch (e) {} roomUnsub = null; }
+    lastReactionId = null;
+    roomUnsub = FB.api.onSnapshot(roomDoc(roomCode), snap => {
+      if (!snap.exists()) { onRoomVanished(); return; }
+      const room = snap.data();
+      applyRoomState(room);
+
+      if (room.reaction && room.reaction.id !== lastReactionId) {
+        lastReactionId = room.reaction.id;
+        if (room.reaction.seat !== mySeat) {
+          showReactionToast(room.reaction.emoji);
+        }
+      }
+    }, err => {
+      console.error(err);
+      setStatus(friendlyError(err), 'error');
+      onlineSetupStatus.className = 'status-line error';
+      onlineSetupStatus.textContent = friendlyError(err);
+    });
+  }
+
+  async function sendReaction(emoji) {
+    if (mode !== 'online' || !roomCode || !FB.ready) return;
+    showReactionToast(emoji);
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    lastReactionId = id;
+    try {
+      await FB.api.updateDoc(roomDoc(roomCode), {
+        reaction: { emoji, seat: mySeat, id }
+      });
+    } catch (e) {}
+  }
+
+  function showReactionToast(emoji) {
+    if (!reactionToast) return;
+    reactionToast.textContent = emoji;
+    reactionToast.classList.remove('show');
+    void reactionToast.offsetWidth;
+    reactionToast.classList.add('show');
+  }
+
+  reactionBar.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => sendReaction(btn.dataset.emoji));
+  });
+
+  function onRoomVanished() {
+    clearSession();
+    if (gameStatus === 'finished') return;
+    setStatus('That room is gone — everyone left, or it expired.', 'error');
+    onlineSetupStatus.className = 'status-line error';
+    onlineSetupStatus.textContent = 'That room no longer exists.';
+    teardownOnline(true).then(() => { showOnly(welcomeScreen); refreshRejoinButton(); });
+  }
+
+  function applyRoomState(room) {
+    const keys = seatKeys(room);
+    const myKey = keys.find(k => room.seats[k].id === myId);
+    if (myKey == null) {
+      onRoomVanished();
+      return;
+    }
+    mySeat = Number(myKey);
+    isHost = room.hostId === myId;
+    gameStatus = room.status;
+    viewMoveNo = room.moveNo || 0;
+
+    players = keys.map((k, i) => {
+      const s = room.seats[k];
+      return {
+        name: s.name || ('Player ' + (i + 1)),
+        score: s.score || 0,
+        online: s.online !== false,
+        rack: i === mySeat ? String(s.rack || '').split('').filter(Boolean) : [],
+        rackCount: String(s.rack || '').length
+      };
+    });
+
+    if (room.status === 'lobby') {
+      stopTurnTimer();
+      renderWaitingRoom();
+      if (!onlineWaitingScreen.classList.contains('hidden')) return;
+      showOnly(onlineWaitingScreen);
+      return;
+    }
+
+    const prevBoardStr = boardToStr(board);
+    board = strToBoard(room.board || EMPTY_BOARD_STR);
+    const newStr = room.board || EMPTY_BOARD_STR;
+    lastPlayedKeys = new Set();
+    for (let i = 0; i < 225; i++) {
+      if (prevBoardStr[i] === '.' && newStr[i] !== '.') lastPlayedKeys.add(i);
+    }
+
+    currentPlayerIndex = room.turn || 0;
+    bagCount = String(room.bag || '').length;
+    consecutivePasses = room.passes || 0;
+
+    if (room.status === 'finished') {
+      renderFinalScoreScreen(players, room.lastMove || '');
+      clearSession();
+      return;
+    }
+
+    if (!busy) {
+      pending = [];
+      selectedRackIndex = null;
+      exchangeMode = false;
+      exchangeSelection = [];
+      exchangeBtn.textContent = 'Exchange';
+    }
+
+    if (gameScreen.classList.contains('hidden')) {
+      showOnly(gameScreen);
+      onlineBar.classList.remove('hidden');
+      reactionBar.classList.remove('hidden');
+      quitOnlineBtn.classList.remove('hidden');
+    }
+    roomCodeLabel.textContent = 'Room ' + roomCode;
+    renderAll();
+    if (!busy) setStatus(room.lastMove || '', null);
+    updateTurnBanner();
+    startTurnTimer((room.turnStartedAt || Date.now()) + TURN_SECONDS * 1000);
+  }
+
+  function updateTurnBanner() {
     if (mode !== 'online') return;
     const mine = isMyTurn();
-    disableOnlineActions(!mine);
+    setActionsDisabled(!mine || busy);
     if (mine) {
-      turnBanner.textContent = 'Your turn!';
+      turnBanner.textContent = 'Your turn';
       turnBanner.className = 'turn-banner your-turn';
     } else {
-      const waitingName = players[currentPlayerIndex] ? players[currentPlayerIndex].name : '…';
-      turnBanner.textContent = 'Waiting for ' + waitingName + '’s turn…';
+      const who = players[currentPlayerIndex];
+      turnBanner.textContent = who ? 'Waiting for ' + who.name : 'Waiting…';
       turnBanner.className = 'turn-banner';
     }
   }
 
-  function switchToOnlineGameScreen() {
-    onlineWaitingScreen.classList.add('hidden');
-    onlineSetupScreen.classList.add('hidden');
-    gameScreen.classList.remove('hidden');
-    onlineBar.classList.remove('hidden');
-    roomCodeLabel.textContent = 'Room ' + roomCode;
-  }
-
-  function cleanupOnline() {
-    if (peer) { try { peer.destroy(); } catch (e) {} }
-    peer = null;
-    hostConn = null;
-    connections = [];
-    isHost = false;
-    roomCode = '';
-    gameStatus = 'lobby';
-    onlineBar.classList.add('hidden');
-  }
-
-  // ---------- Host side ----------
-
-  function currentLobbyNames() {
-    return [myName].concat(connections.map(c => c.playerName || 'Joining…'));
-  }
-
-  function renderWaitingRoom(names) {
+  function renderWaitingRoom() {
     roomCodeDisplay.textContent = roomCode;
-    waitingPlayersList.innerHTML = names.map(n => `<div class="row"><span>${escapeHtml(n)}</span></div>`).join('');
+    waitingPlayersList.innerHTML = players.map((p, i) =>
+      '<div class="row"><span><span class="dot' + (p.online ? '' : ' off') + '"></span>' + escapeHtml(p.name) + (i === mySeat ? ' (you)' : '') + '</span>'
+      + '<span class="tag">' + (i === 0 ? 'host' : 'player ' + (i + 1)) + '</span></div>'
+    ).join('');
     if (isHost) {
-      startOnlineGameBtn.classList.toggle('hidden', names.length < 2);
-      waitingHint.textContent = names.length < 2
+      startOnlineGameBtn.classList.toggle('hidden', players.length < 2);
+      waitingHint.textContent = players.length < 2
         ? 'Share this code with your friend so they can join.'
-        : 'Ready when you are — tap Start Game.';
+        : 'Everyone’s in — tap Start Game when you’re ready.';
     } else {
       startOnlineGameBtn.classList.add('hidden');
       waitingHint.textContent = 'Waiting for the host to start the game…';
     }
   }
 
-  function broadcastLobby() {
-    const names = currentLobbyNames();
-    connections.forEach(c => { try { c.send({ type: 'lobby', players: names }); } catch (e) {} });
-    renderWaitingRoom(names);
-  }
-
-  function handleIncomingConnection(conn) {
-    conn.on('data', (msg) => {
-      if (!msg || !msg.type) return;
-      if (msg.type === 'join') {
-        conn.playerName = String(msg.name || 'Player').slice(0, 16);
-        if (!connections.includes(conn)) connections.push(conn);
-        broadcastLobby();
-      } else {
-        handleHostAction(conn, msg);
-      }
-    });
-    conn.on('close', () => {
-      if (gameStatus === 'lobby') {
-        connections = connections.filter(c => c !== conn);
-        broadcastLobby();
-      }
-      // Once play has started, seat order must stay stable, so a mid-game
-      // disconnect just leaves that seat unresponsive rather than reindexing.
-    });
-  }
-
-  function handleHostAction(conn, msg) {
-    if (gameStatus !== 'playing') return;
-    const seatIndex = connections.indexOf(conn) + 1;
-    if (seatIndex <= 0 || seatIndex !== currentPlayerIndex) {
-      try { conn.send({ type: 'actionError', message: "It's not your turn." }); } catch (e) {}
-      return;
-    }
-    const player = players[seatIndex];
-
-    if (msg.type === 'playWord') {
-      const tiles = Array.isArray(msg.tiles) ? msg.tiles : [];
-      const rackCopy = player.rack.slice();
-      for (const t of tiles) {
-        const need = t.isBlank ? '?' : t.letter;
-        const i = rackCopy.indexOf(need);
-        if (i === -1) { conn.send({ type: 'actionError', message: 'That tile isn\u2019t in your rack — try again.' }); return; }
-        rackCopy.splice(i, 1);
-      }
-      const result = validateAndScore(board, tiles);
-      if (!result.valid) {
-        conn.send({ type: 'actionError', message: result.error });
+  copyCodeBtn.addEventListener('click', async () => {
+    const text = roomCode;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Mazard Tiles', text: 'Join my Mazard Tiles game — room code ' + text + '\n' + location.href });
         return;
       }
-      tiles.forEach(t => { board[t.row][t.col] = { letter: t.letter, isBlank: t.isBlank }; });
-      tiles.forEach(t => {
+      await navigator.clipboard.writeText(text);
+      copyCodeBtn.textContent = 'Copied';
+      setTimeout(() => { copyCodeBtn.textContent = 'Copy / share code'; }, 1600);
+    } catch (e) {}
+  });
+
+  startOnlineGameBtn.addEventListener('click', async () => {
+    startOnlineGameBtn.disabled = true;
+    try {
+      const ref = roomDoc(roomCode);
+      await FB.api.runTransaction(FB.db, async (txn) => {
+        const snap = await txn.get(ref);
+        if (!snap.exists()) throw new Error('The room disappeared.');
+        const cur = snap.data();
+        const out = dealRoom(cur, myId);
+        if (out.error) throw new Error(out.error);
+        txn.set(ref, out.room);
+      });
+    } catch (err) {
+      console.error(err);
+      waitingHint.textContent = friendlyError(err);
+    } finally {
+      startOnlineGameBtn.disabled = false;
+    }
+  });
+
+  function dealRoom(cur, hostId) {
+    if (!cur) return { error: 'The room disappeared.' };
+    if (cur.status !== 'lobby') return { error: 'The game has already started.' };
+    if (cur.hostId !== hostId) return { error: 'Only the host can start the game.' };
+    const keys = seatKeys(cur);
+    if (keys.length < 2) return { error: 'You need at least two players.' };
+    const freshBag = buildBag();
+    keys.forEach(k => {
+      cur.seats[k].rack = freshBag.splice(freshBag.length - RACK_SIZE, RACK_SIZE).join('');
+      cur.seats[k].score = 0;
+    });
+    cur.bag = freshBag.join('');
+    cur.board = EMPTY_BOARD_STR;
+    cur.turn = 0;
+    cur.turnStartedAt = Date.now();
+    cur.passes = 0;
+    cur.moveNo = 1;
+    cur.lastMove = '';
+    cur.status = 'playing';
+    cur.updatedAt = Date.now();
+    return { room: cur };
+  }
+
+  function applyMoveToRoom(cur, seat, kind, payload, expectedMoveNo) {
+    if (!cur) return { error: 'The room disappeared.' };
+    if (cur.status !== 'playing') return { error: 'This game isn’t running.' };
+    if (cur.turn !== seat) return { error: 'It isn’t your turn.' };
+    if (expectedMoveNo != null && (cur.moveNo || 0) !== expectedMoveNo) {
+      return { error: 'The board just changed — take another look.' };
+    }
+
+    const keys = seatKeys(cur);
+    const me = cur.seats[String(seat)];
+    if (!me) return { error: 'You aren’t seated in this game.' };
+
+    const liveBoard = strToBoard(cur.board || EMPTY_BOARD_STR);
+    const bagArr = String(cur.bag || '').split('').filter(Boolean);
+    let rack = String(me.rack || '').split('').filter(Boolean);
+    let msg = '';
+
+    if (kind === 'play') {
+      const tilesIn = (payload && payload.tiles) || [];
+      const copy = rack.slice();
+      for (const t of tilesIn) {
         const need = t.isBlank ? '?' : t.letter;
-        const i = player.rack.indexOf(need);
-        player.rack.splice(i, 1);
-      });
-      player.score += result.score;
-      drawTiles(player, RACK_SIZE - player.rack.length);
-      consecutivePasses = 0;
-      const wordList = result.words.map(w => w.text + ' (' + w.score + ')').join(', ');
-      let m = player.name + ' played ' + wordList + ' for ' + result.score + ' points.';
-      if (result.bingo) m += ' Bingo! +50 bonus.';
-      hostAdvanceTurn(m);
+        const i = copy.indexOf(need);
+        if (i === -1) return { error: 'Those tiles aren’t all on your rack.' };
+        copy.splice(i, 1);
+      }
+      const result = validateAndScore(liveBoard, tilesIn);
+      if (!result.valid) return { error: result.error };
+      tilesIn.forEach(t => { liveBoard[t.row][t.col] = { letter: t.letter, isBlank: !!t.isBlank }; });
+      rack = copy;
+      const want = Math.min(RACK_SIZE - rack.length, bagArr.length);
+      for (let i = 0; i < want; i++) rack.push(bagArr.pop());
+      me.score = (me.score || 0) + result.score;
+      cur.passes = 0;
+      msg = me.name + ' played ' + result.words.map(w => w.text + ' (' + w.score + ')').join(', ')
+          + ' for ' + result.score + ' points.' + (result.bingo ? ' Bingo — +50 included.' : '');
 
-    } else if (msg.type === 'pass') {
-      consecutivePasses += 1;
-      hostAdvanceTurn(player.name + ' passed.');
+    } else if (kind === 'pass') {
+      cur.passes = (cur.passes || 0) + 1;
+      msg = me.name + ' passed.';
 
-    } else if (msg.type === 'exchange') {
-      const letters = Array.isArray(msg.letters) ? msg.letters : [];
-      if (letters.length === 0) { conn.send({ type: 'actionError', message: 'Select at least one tile to exchange.' }); return; }
-      if (bag.length < letters.length) { conn.send({ type: 'actionError', message: 'Not enough tiles left in the bag to exchange that many.' }); return; }
-      const rackCopy = player.rack.slice();
+    } else if (kind === 'exchange') {
+      const letters = (payload && payload.letters) || [];
+      if (!letters.length) return { error: 'Pick at least one tile to swap.' };
+      if (bagArr.length < letters.length) return { error: 'There aren’t enough tiles left in the bag for that.' };
+      const copy = rack.slice();
       for (const l of letters) {
-        const i = rackCopy.indexOf(l);
-        if (i === -1) { conn.send({ type: 'actionError', message: 'That tile isn\u2019t in your rack — try again.' }); return; }
-        rackCopy.splice(i, 1);
+        const i = copy.indexOf(l);
+        if (i === -1) return { error: 'Those tiles aren’t all on your rack.' };
+        copy.splice(i, 1);
       }
-      letters.forEach(l => { const i = player.rack.indexOf(l); player.rack.splice(i, 1); });
-      bag.push(...letters);
-      shuffle(bag);
-      drawTiles(player, letters.length);
-      consecutivePasses += 1;
-      hostAdvanceTurn('Exchanged ' + letters.length + ' tile' + (letters.length > 1 ? 's' : '') + '.');
+      rack = copy;
+      bagArr.push(...letters);
+      shuffle(bagArr);
+      for (let i = 0; i < letters.length; i++) rack.push(bagArr.pop());
+      cur.passes = (cur.passes || 0) + 1;
+      msg = me.name + ' swapped ' + letters.length + ' tile' + (letters.length > 1 ? 's' : '') + '.';
+
+    } else {
+      return { error: 'Unknown move.' };
+    }
+
+    me.rack = rack.join('');
+    cur.bag = bagArr.join('');
+    cur.board = boardToStr(liveBoard);
+    cur.moveNo = (cur.moveNo || 0) + 1;
+    cur.lastMove = msg;
+    cur.updatedAt = Date.now();
+
+    const everyone = keys.map(k => cur.seats[k]);
+    const wentOut = bagArr.length === 0 && rack.length === 0;
+    const stalled = (cur.passes || 0) >= everyone.length * 2;
+
+    if (wentOut || stalled) {
+      everyone.forEach(s => {
+        const val = String(s.rack || '').split('').reduce((a, l) => a + (l === '?' ? 0 : (LETTER_VALUES[l] || 0)), 0);
+        s.score = (s.score || 0) - val;
+        if (wentOut && s !== me) me.score = (me.score || 0) + val;
+      });
+      cur.status = 'finished';
+      return { room: cur };
+    }
+
+    cur.turn = (cur.turn + 1) % keys.length;
+    cur.turnStartedAt = Date.now();
+    return { room: cur };
+  }
+
+  async function submitMove(kind, payload) {
+    if (busy) return;
+    busy = true;
+    setActionsDisabled(true);
+    setStatus(kind === 'play' ? 'Sending your word…' : kind === 'exchange' ? 'Swapping…' : 'Passing…', null);
+
+    const expected = viewMoveNo;
+    const ref = roomDoc(roomCode);
+    try {
+      await FB.api.runTransaction(FB.db, async (txn) => {
+        const snap = await txn.get(ref);
+        if (!snap.exists()) throw new Error('The room disappeared.');
+        const cur = snap.data();
+        const out = applyMoveToRoom(cur, mySeat, kind, payload, expected);
+        if (out.error) throw new Error(out.error);
+        txn.set(ref, out.room);
+      });
+
+      pending = [];
+      selectedRackIndex = null;
+      exchangeMode = false;
+      exchangeSelection = [];
+      exchangeBtn.textContent = 'Exchange';
+    } catch (err) {
+      console.error(err);
+      const me = myPlayer();
+      if (me && kind === 'play') {
+        pending.forEach(t => me.rack.push(t.originalLetter));
+        pending = [];
+      }
+      setStatus(friendlyError(err), 'error');
+      renderBoard();
+      renderRack();
+    } finally {
+      busy = false;
+      updateTurnBanner();
     }
   }
 
-  function hostAdvanceTurn(message) {
-    if (checkEndGame()) {
-      stopTurnTimer();
-      hostFinishGame(message);
-      return;
-    }
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    broadcastState(message);
-    startTurnTimer();
+  async function leaveRoomForGood() {
+    if (!roomCode || !FB.ready) { await teardownOnline(true); return; }
+    const code = roomCode;
+    const wasLobby = gameStatus === 'lobby';
+    await teardownOnline(true);
+    try {
+      const ref = roomDoc(code);
+      await FB.api.runTransaction(FB.db, async (txn) => {
+        const snap = await txn.get(ref);
+        if (!snap.exists()) return;
+        const cur = snap.data();
+        const keys = Object.keys(cur.seats || {}).sort((a, b) => Number(a) - Number(b));
+        const remaining = keys.map(k => cur.seats[k]).filter(s => s.id !== myId);
+        if (remaining.length === 0) {
+          txn.delete(ref);
+          return;
+        }
+        if (!wasLobby || cur.status !== 'lobby') {
+          keys.forEach(k => {
+            if (cur.seats[k].id === myId) cur.seats[k].online = false;
+          });
+          txn.set(ref, cur);
+          return;
+        }
+        const seats = {};
+        remaining.forEach((s, i) => { seats[String(i)] = s; });
+        cur.seats = seats;
+        if (cur.hostId === myId) cur.hostId = remaining[0].id;
+        cur.updatedAt = Date.now();
+        txn.set(ref, cur);
+      });
+    } catch (e) { console.warn(e); }
   }
 
-  function hostFinishGame(message) {
-    const wentOut = players.find(p => p.rack.length === 0 && bag.length === 0);
-    players.forEach(p => {
-      const val = p.rack.reduce((s, l) => s + (l === '?' ? 0 : LETTER_VALUES[l]), 0);
-      p.score -= val;
-      if (wentOut && wentOut !== p) wentOut.score += val;
-    });
-    gameStatus = 'finished';
-    broadcastState(message);
-  }
-
-  function buildFinalScores() {
-    return players.slice().sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }));
-  }
-
-  function broadcastState(message) {
-    connections.forEach((c, i) => {
-      const seat = i + 1;
-      const p = players[seat];
-      try {
-        c.send({
-          type: 'state',
-          board: board,
-          players: players.map(pl => ({ name: pl.name, score: pl.score, rackCount: pl.rack.length })),
-          currentPlayerIndex,
-          bagCount: bag.length,
-          lastMove: message || '',
-          status: gameStatus,
-          yourIndex: seat,
-          yourRack: p ? p.rack.slice() : [],
-          finalScores: gameStatus === 'finished' ? buildFinalScores() : undefined
-        });
-      } catch (e) {}
-    });
-
-    // Update host's own view
-    pending = [];
-    selectedRackIndex = null;
-    exchangeMode = false;
-    exchangeSelection = [];
-    exchangeBtn.textContent = 'Exchange';
-
-    if (gameStatus === 'finished') {
-      renderFinalScoreScreen(players);
-      return;
-    }
-    renderAll();
-    setStatus(message || '', null);
-    updateOnlineTurnBanner();
-    startTurnTimer();
-  }
-
-  createRoomBtn.addEventListener('click', () => {
-    const name = (onlineNameInput.value || '').trim() || 'Player 1';
-    onlineSetupStatus.textContent = '';
-    createRoomBtn.disabled = true;
-    attemptCreateRoom(name, 6);
+  leaveRoomBtn.addEventListener('click', async () => {
+    leaveRoomBtn.disabled = true;
+    await leaveRoomForGood();
+    leaveRoomBtn.disabled = false;
+    showOnly(welcomeScreen);
+    refreshRejoinButton();
   });
 
-  function attemptCreateRoom(name, attemptsLeft) {
-    if (typeof Peer === 'undefined') {
-      createRoomBtn.disabled = false;
-      onlineSetupStatus.textContent = "Couldn't load the multiplayer library — check your internet connection and try again.";
-      return;
-    }
-    const code = generateRoomCode();
-    const p = new Peer('wordtiles5-' + code);
-    let settled = false;
-    p.on('open', () => {
-      settled = true;
-      peer = p;
-      roomCode = code;
-      isHost = true;
-      mode = 'online';
-      myName = name;
-      connections = [];
-      gameStatus = 'lobby';
-      peer.on('connection', handleIncomingConnection);
-      onlineSetupScreen.classList.add('hidden');
-      onlineWaitingScreen.classList.remove('hidden');
-      renderWaitingRoom([name]);
-      createRoomBtn.disabled = false;
-    });
-    p.on('error', (err) => {
-      if (settled) { console.warn('Peer error', err); return; }
-      if (err && err.type === 'unavailable-id' && attemptsLeft > 0) {
-        try { p.destroy(); } catch (e) {}
-        attemptCreateRoom(name, attemptsLeft - 1);
-      } else {
-        createRoomBtn.disabled = false;
-        onlineSetupStatus.textContent = 'Could not create a room right now. Check your connection and try again.';
-      }
-    });
-  }
-
-  startOnlineGameBtn.addEventListener('click', () => {
-    const names = currentLobbyNames();
-    if (names.length < 2) return;
-    players = names.map(n => ({ name: n, score: 0, rack: [] }));
-    board = makeBoard();
-    bag = buildBag();
-    currentPlayerIndex = 0;
-    myPlayerIndex = 0;
-    consecutivePasses = 0;
-    gameStatus = 'playing';
-    players.forEach(p => drawTiles(p, RACK_SIZE));
-    pending = [];
-    selectedRackIndex = null;
-    exchangeMode = false;
-    exchangeSelection = [];
-    switchToOnlineGameScreen();
-    broadcastState(players[0].name + '\u2019s turn to start!');
+  quitOnlineBtn.addEventListener('click', async () => {
+    await leaveRoomForGood();
+    showOnly(welcomeScreen);
+    refreshRejoinButton();
   });
 
-  // ---------- Client (joining) side ----------
-
-  function handleClientMessage(msg) {
-    if (!msg || !msg.type) return;
-
-    if (msg.type === 'actionError') {
-      setStatus(msg.message, 'error');
-      disableOnlineActions(false);
-      return;
-    }
-    if (msg.type === 'lobby') {
-      renderWaitingRoom(msg.players || []);
-      return;
-    }
-    if (msg.type !== 'state') return;
-
-    gameStatus = msg.status;
-    board = msg.board;
-    players = (msg.players || []).map((p, i) => i === msg.yourIndex ? Object.assign({}, p, { rack: msg.yourRack || [] }) : Object.assign({}, p, { rack: [] }));
-    currentPlayerIndex = msg.currentPlayerIndex;
-    bagCount = msg.bagCount;
-    myPlayerIndex = msg.yourIndex;
-    pending = [];
-    selectedRackIndex = null;
-    exchangeMode = false;
-    exchangeSelection = [];
-    exchangeBtn.textContent = 'Exchange';
-
-    if (gameStatus === 'finished') {
-      renderFinalScoreScreen(msg.finalScores || buildFinalScoresFrom(players));
-      return;
-    }
-
-    switchToOnlineGameScreen();
-    renderAll();
-    setStatus(msg.lastMove || '', null);
-    updateOnlineTurnBanner();
-  }
-
-  function buildFinalScoresFrom(list) {
-    return list.slice().sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }));
-  }
-
-  joinRoomBtn.addEventListener('click', () => {
-    if (typeof Peer === 'undefined') {
-      onlineSetupStatus.textContent = "Couldn't load the multiplayer library — check your internet connection and try again.";
-      return;
-    }
-    const name = (onlineNameInput.value || '').trim() || 'Player';
-    const code = (joinCodeInput.value || '').trim().toUpperCase();
-    if (!code) { onlineSetupStatus.textContent = 'Enter a room code.'; return; }
-
-    onlineSetupStatus.textContent = 'Connecting…';
-    joinRoomBtn.disabled = true;
-    myName = name;
-    mode = 'online';
+  async function teardownOnline(clearSaved) {
+    stopTurnTimer();
+    if (roomUnsub) { try { roomUnsub(); } catch (e) {} roomUnsub = null; }
+    roomCode = '';
     isHost = false;
-    roomCode = code;
+    gameStatus = 'lobby';
+    mode = 'local';
+    busy = false;
+    if (clearSaved) clearSession();
+    onlineBar.classList.add('hidden');
+    reactionBar.classList.add('hidden');
+    quitOnlineBtn.classList.add('hidden');
+    setActionsDisabled(false);
+  }
 
-    const p = new Peer();
-    let settled = false;
-    p.on('open', () => {
-      peer = p;
-      const conn = p.connect('wordtiles5-' + code, { reliable: true });
-      hostConn = conn;
+  function saveSession() {
+    store_set(LS_SESSION, JSON.stringify({ code: roomCode, at: Date.now() }));
+  }
+  function clearSession() { store_del(LS_SESSION); }
+  function readSession() {
+    try {
+      const raw = store_get(LS_SESSION);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || !s.code) return null;
+      if (Date.now() - (s.at || 0) > ROOM_TTL_MS) return null;
+      return s;
+    } catch (e) { return null; }
+  }
 
-      conn.on('open', () => {
-        settled = true;
-        conn.send({ type: 'join', name });
-        onlineSetupScreen.classList.add('hidden');
-        onlineWaitingScreen.classList.remove('hidden');
-        startOnlineGameBtn.classList.add('hidden');
-        waitingHint.textContent = 'Waiting for the host to start the game…';
-        roomCodeDisplay.textContent = code;
-        joinRoomBtn.disabled = false;
-      });
-      conn.on('data', handleClientMessage);
-      conn.on('close', () => {
-        if (gameStatus !== 'finished') {
-          setStatus("Lost connection to the host. The game can't continue — try rejoining.", 'error');
-          disableOnlineActions(true);
-        }
-      });
-      conn.on('error', () => {
-        joinRoomBtn.disabled = false;
-        onlineSetupStatus.textContent = "Couldn't reach that room. Double-check the code and try again.";
-      });
-      setTimeout(() => {
-        if (!settled) {
-          joinRoomBtn.disabled = false;
-          onlineSetupStatus.textContent = "Couldn't find a room with that code. Double-check it and try again.";
-        }
-      }, 8000);
-    });
-    p.on('error', (err) => {
-      if (!settled) {
-        joinRoomBtn.disabled = false;
-        onlineSetupStatus.textContent = 'Connection problem — check your network and try again.';
-      }
-    });
+  function refreshRejoinButton() {
+    const s = firebaseConfigured() ? readSession() : null;
+    if (!s) { rejoinBtn.classList.add('hidden'); return; }
+    rejoinBtn.textContent = 'Rejoin room ' + s.code;
+    rejoinBtn.classList.remove('hidden');
+  }
+
+  rejoinBtn.addEventListener('click', async () => {
+    const s = readSession();
+    if (!s) { refreshRejoinButton(); return; }
+    showOnly(onlineSetupScreen);
+    applyFirebaseAvailability();
+    joinCodeInput.value = s.code;
+    await doJoin(s.code, (store_get(LS_NAME) || '').trim() || 'Player');
   });
 
-  leaveRoomBtn.addEventListener('click', () => {
-    cleanupOnline();
-    onlineWaitingScreen.classList.add('hidden');
-    welcomeScreen.classList.remove('hidden');
-  });
-
+  applyFirebaseAvailability();
+  refreshRejoinButton();
+  renderBoard();
+  showOnly(welcomeScreen);
 })();
 </script>
 </body>
