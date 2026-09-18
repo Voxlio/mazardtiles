@@ -975,6 +975,20 @@ var FIREBASE_SDK_VERSION = "10.12.2";
   let radioPeers = {};
   let radioLastTalking = {};
   let radioAudioCtx = null;
+  let radioAutoTried = false;
+  let radioPendingAudioEls = [];
+
+  function radioUnlockAudio() {
+    radioPendingAudioEls = radioPendingAudioEls.filter(el => {
+      if (!el.isConnected) return false;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});
+      return true;
+    });
+  }
+  ['pointerdown', 'click', 'touchstart'].forEach(evt => {
+    document.addEventListener(evt, radioUnlockAudio, { passive: true });
+  });
 
   function store_get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function store_set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -1869,7 +1883,7 @@ var FIREBASE_SDK_VERSION = "10.12.2";
   }
 
   function syncRadioPeers() {
-    if (!radioReady || mode !== 'online' || !FB.ready || !roomCode) return;
+    if (mode !== 'online' || !FB.ready || !roomCode) return;
     const wanted = new Set(radioPeerSeats());
     Object.keys(radioPeers).forEach(k => {
       const seat = Number(k);
@@ -1887,7 +1901,11 @@ var FIREBASE_SDK_VERSION = "10.12.2";
     const entry = { pc, unsub: null, audioEl: null, appliedRemote: 0 };
     radioPeers[seat] = entry;
 
-    if (radioStream) radioStream.getAudioTracks().forEach(t => pc.addTrack(t, radioStream));
+    if (radioStream) {
+      radioStream.getAudioTracks().forEach(t => pc.addTrack(t, radioStream));
+    } else {
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+    }
 
     pc.ontrack = (ev) => {
       let audioEl = entry.audioEl;
@@ -1900,7 +1918,7 @@ var FIREBASE_SDK_VERSION = "10.12.2";
         entry.audioEl = audioEl;
       }
       audioEl.srcObject = ev.streams[0];
-      audioEl.play().catch(() => {});
+      audioEl.play().catch(() => { radioPendingAudioEls.push(audioEl); });
     };
 
     const myField = amInitiator ? 'candA' : 'candB';
@@ -1958,6 +1976,7 @@ var FIREBASE_SDK_VERSION = "10.12.2";
     radioReady = false;
     radioTalking = false;
     radioLastTalking = {};
+    radioAutoTried = false;
     radioBtn.classList.remove('live');
     radioBtn.textContent = '🎙️ Hold to Talk';
     if (radioRow) radioRow.classList.add('hidden');
@@ -2079,7 +2098,12 @@ var FIREBASE_SDK_VERSION = "10.12.2";
     }
     if (firebaseConfigured()) {
       radioRow.classList.remove('hidden');
-      syncRadioPeers();
+      if (!radioAutoTried) {
+        radioAutoTried = true;
+        ensureRadioReady().finally(syncRadioPeers);
+      } else {
+        syncRadioPeers();
+      }
       updateRadioStatus(room.talking || {});
     }
     roomCodeLabel.textContent = 'Room ' + roomCode;
